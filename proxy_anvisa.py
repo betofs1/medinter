@@ -79,7 +79,8 @@ def normalizar_str(s):
 
 def tipo_produto(raw):
     r = normalizar_str(raw)
-    if "refer" in r:       return "referencia"
+    if "refer" in r:       return "etico"      # Medicamento de Referência = Ético
+    if "novos" in r or " novo" in r: return "etico"
     if "generi" in r:      return "generico"
     if "simil" in r:       return "similar"
     if "biolog" in r:      return "biologico"
@@ -259,7 +260,7 @@ def status():
     return jsonify({
         "status":  "ok",
         "servico": "FarmaDesk CMED Proxy",
-        "versao":  "2.0",
+        "versao":  "2.1",
         "base":    META.get("data", "não carregada"),
         "total":   len(DB),
     })
@@ -291,7 +292,7 @@ def buscar():
             break
 
     # Ordena: referência > genérico > similar > outros
-    ordem = ["referencia", "generico", "similar", "biologico", "fitoterapico", "homeopatico", "outros"]
+    ordem = ["etico", "generico", "similar", "biologico", "fitoterapico", "homeopatico", "outros"]
     resultados.sort(key=lambda m: ordem.index(m["tipo"]) if m["tipo"] in ordem else 99)
 
     return jsonify({
@@ -326,7 +327,7 @@ def index():
     total = len(DB)
     data  = META.get("data", "não disponível")
     return f"""<html><body style="font-family:sans-serif;background:#0a1628;color:#e2e8f0;padding:40px">
-    <h2 style="color:#60a5fa">FarmaDesk — Proxy CMED v2.0</h2>
+    <h2 style="color:#60a5fa">Medicamentos Intercambiáveis — Proxy CMED v2.1</h2>
     <p style="color:#94a3b8">Base: <strong style="color:#34d399">{total:,} medicamentos</strong> · Atualizado em {data}</p>
     <hr style="border-color:#1e3254;margin:20px 0">
     <p style="color:#64748b;font-size:13px">Endpoints:</p>
@@ -347,7 +348,7 @@ if __name__ == "__main__":
 
     print()
     print("  ╔══════════════════════════════════════════════╗")
-    print("  ║   FarmaDesk — Proxy CMED v2.0               ║")
+    print("  ║   Medicamentos Intercambiáveis — Proxy CMED v2.1               ║")
     print("  ╚══════════════════════════════════════════════╝")
     print()
 
