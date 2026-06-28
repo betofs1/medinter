@@ -184,6 +184,40 @@
   .res-princ  { font-size: 13px; color: var(--gray-mid); flex: 1; line-height: 1.3; }
   .res-foto   { flex-shrink: 0; }
 
+  .card-resumida.expanded { flex-wrap: wrap; background: #f8faff; border-left-width: 4px; }
+  .card-expand-detail {
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 8px 16px;
+  }
+  .exp-field { display: flex; flex-direction: column; }
+  .exp-label { font-size: 10px; font-weight: 700; color: var(--gray-light); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
+  .exp-val   { font-size: 13px; color: var(--gray); font-weight: 500; line-height: 1.3; }
+  .exp-val.princ { color: var(--blue-dark); font-weight: 700; }
+  .exp-precos { display: flex; gap: 16px; margin-top: 4px; }
+  .btn-expandir {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--blue-mid);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+  .btn-expandir:hover { color: var(--blue); }
+  .btn-expandir svg { transition: transform 0.2s; }
+  .card-resumida.expanded .btn-expandir svg { transform: rotate(180deg); }
+
   .results-list { display: flex; flex-direction: column; gap: 6px; }
 
   /* HISTÓRICO BUSCAS */
@@ -271,16 +305,7 @@
     <button class="filter-btn"    data-t="outros"   onclick="setFiltro('outros',this)">
       <span class="filter-dot" style="background:#9ca3af"></span>Outros
     </button>
-    <span style="flex:1"></span>
-    <span class="filter-label" style="margin-right:4px">Exibição:</span>
-    <button class="filter-btn fv active-view" id="btnExpandida" onclick="setView('expandida')">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-      Expandida
-    </button>
-    <button class="filter-btn" id="btnResumida" onclick="setView('resumida')">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      Resumida
-    </button>
+
   </div>
 
   <div class="status-bar" id="statusBar"></div>
@@ -350,7 +375,7 @@ const QUICK_DEFAULT = ["Diosmina + Hesperidina","Omeprazol","Amoxicilina","Dipir
 const HIST_KEY = "farma_hist_v1";
 const HIST_MAX = 12;
 
-let allResults = [], filtroAtivo = "todos", viewMode = "expandida";
+let allResults = [], filtroAtivo = "todos", viewMode = "resumida";
 
 function getHist() {
   try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch(e) { return []; }
@@ -532,12 +557,7 @@ function setFiltro(tipo, btn) {
   renderCards();
 }
 
-function setView(mode) {
-  viewMode = mode;
-  document.getElementById("btnExpandida").className = "filter-btn" + (mode==="expandida" ? " fv" : "");
-  document.getElementById("btnResumida").className  = "filter-btn" + (mode==="resumida"  ? " fv" : "");
-  renderCards();
-}
+// setView removido — exibição resumida com expansão individual
 
 function filteredResults() {
   return filtroAtivo==="todos" ? allResults : allResults.filter(m=>m.tipo===filtroAtivo);
@@ -662,50 +682,87 @@ function renderCards() {
     outros:  { label:"Outros",                             cls:"sh-o" },
   };
 
-  if (viewMode === "resumida") {
-    let h = `<div class="results-list">`;
-    let last = null;
-    grouped.forEach(m => {
-      if (m.tipo !== last && filtroAtivo==="todos") {
-        const i = shInfo[m.tipo] || shInfo.outros;
-        h += `<div class="section-header" style="margin-top:10px"><div class="sh-line"></div><span class="sh-label ${i.cls}">${i.label}</span><div class="sh-line"></div></div>`;
-        last = m.tipo;
-      }
-      h += cardResumidoHTML(m);
-    });
-    h += `</div>`;
-    wrap.innerHTML = h;
-  } else {
-    let h = `<div class="results-grid">`;
-    let last = null;
-    grouped.forEach(m => {
-      if (m.tipo !== last && filtroAtivo==="todos") {
-        const i = shInfo[m.tipo] || shInfo.outros;
-        h += `<div class="section-header"><div class="sh-line"></div><span class="sh-label ${i.cls}">${i.label}</span><div class="sh-line"></div></div>`;
-        last = m.tipo;
-      }
-      h += cardHTML(m);
-    });
-    h += `</div>`;
-    wrap.innerHTML = h;
-  }
+  let h = `<div class="results-list">`;
+  let last = null;
+  grouped.forEach(m => {
+    if (m.tipo !== last && filtroAtivo==="todos") {
+      const i = shInfo[m.tipo] || shInfo.outros;
+      h += `<div class="section-header" style="margin-top:10px"><div class="sh-line"></div><span class="sh-label ${i.cls}">${i.label}</span><div class="sh-line"></div></div>`;
+      last = m.tipo;
+    }
+    h += cardResumidoHTML(m);
+  });
+  h += `</div>`;
+  wrap.innerHTML = h;
+}
+
+function toggleExpand(el) {
+  const card = el.closest(".card-resumida");
+  card.classList.toggle("expanded");
+  const detail = card.querySelector(".card-expand-detail");
+  if (detail) detail.style.display = card.classList.contains("expanded") ? "grid" : "none";
 }
 
 function cardResumidoHTML(m) {
   const bc = { etico:"be", similar:"bs", generico:"bg", outros:"bo" };
   const rc = { etico:"re", similar:"rs", generico:"rg", outros:"ro" };
   const tl = { etico:"Ético", similar:"Similar", generico:"Genérico", outros:"Outro" };
-  const fotoQ = encodeURIComponent(`embalagem ${m.nome} medicamento`);
+  const fotoQ = encodeURIComponent("embalagem " + m.nome + " medicamento");
   const princ = simplifyPrincipio(m.principio);
-  return `<div class="card-resumida ${rc[m.tipo]||"ro"}">
+
+  // Detail section (shown when expanded)
+  const apList = m.apresentacoes && m.apresentacoes.length > 0
+    ? m.apresentacoes
+    : (m.apresentacao && m.apresentacao !== "nan" ? [m.apresentacao] : []);
+
+  const apHtml = apList.length
+    ? `<div class="exp-field" style="grid-column:1/-1"><span class="exp-label">Apresentaç${apList.length>1?"ões ("+apList.length+")":"ão"}</span><span class="exp-val" style="font-size:12px">${apList.join(" · ")}</span></div>`
+    : "";
+
+  const precoHtml = (m.pf || m.pmc)
+    ? `<div class="exp-field" style="grid-column:1/-1"><span class="exp-label">Preços</span><div class="exp-precos">${m.pf?`<span style="font-size:13px;font-weight:700;color:var(--gray)">PF ${m.pf}</span>`:""} ${m.pmc?`<span style="font-size:13px;font-weight:700;color:var(--green)">PMC ${m.pmc}</span>`:""}</div></div>`
+    : "";
+
+  const tarjaHtml = m.tarja
+    ? (() => { const t=m.tarja.toLowerCase(); const tc=t.includes("pret")?"tpreta":t.includes("verm")?"tverm":"tsem"; const tl2=t.includes("pret")?"Tarja Preta":t.includes("verm")?"Tarja Vermelha":"Sem Tarja"; return `<div class="exp-field"><span class="exp-label">Tarja</span><span class="tarja-badge ${tc}" style="margin-top:2px">${tl2}</span></div>`; })()
+    : "";
+
+  const classeHtml = m.classe && m.classe !== "nan" && m.classe !== ""
+    ? `<div class="exp-field"><span class="exp-label">Classe</span><span class="exp-val" style="font-size:12px">${m.classe}</span></div>`
+    : "";
+
+  const regHtml = m.registro && m.registro !== "—" && m.registro !== "-"
+    ? `<div class="exp-field"><span class="exp-label">Reg. ANVISA</span><span class="exp-val" style="font-size:12px">${m.registro}</span></div>`
+    : "";
+
+  const hospHtml = m.hospitalar
+    ? `<span class="hosp-badge" style="margin-left:0">Uso hospitalar</span>`
+    : "";
+
+  return `<div class="card-resumida ${rc[m.tipo]||"ro"}" onclick="toggleExpand(this)" style="cursor:pointer">
     <span class="res-nome">${m.nome}</span>
     <span class="res-badge"><span class="tipo-badge ${bc[m.tipo]||"bo"}">${tl[m.tipo]||"Outro"}</span></span>
-    <span class="res-princ">${princ}${m.apresentacoes && m.apresentacoes.length > 1 ? `<span style="font-size:11px;color:var(--gray-light);margin-left:6px">(${m.apresentacoes.length} apresentações)</span>` : ""}</span>
-    <span class="res-foto">
+    <span class="res-princ">${princ}${m.apresentacoes && m.apresentacoes.length > 1 ? `<span style="font-size:11px;color:var(--gray-light);margin-left:6px">(${m.apresentacoes.length} apres.)</span>` : ""}</span>
+    <span class="res-foto" onclick="event.stopPropagation()">
       <a class="foto-btn" style="margin-top:0;padding:4px 10px" href="https://www.google.com/search?tbm=isch&q=${fotoQ}" target="_blank" rel="noopener">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>FOTO
       </a>
     </span>
+    <button class="btn-expandir" onclick="event.stopPropagation();toggleExpand(this)" title="Expandir detalhes">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="card-expand-detail" style="display:none" onclick="event.stopPropagation()">
+      <div class="exp-field" style="grid-column:1/-1">
+        <span class="exp-label">Princípio ativo</span>
+        <span class="exp-val princ">${m.principio}</span>
+      </div>
+      <div class="exp-field">
+        <span class="exp-label">Laboratório</span>
+        <span class="exp-val">${m.laboratorio||"—"}</span>
+      </div>
+      ${regHtml}${classeHtml}${tarjaHtml}${apHtml}${precoHtml}
+      ${hospHtml}
+    </div>
   </div>`;
 }
 
