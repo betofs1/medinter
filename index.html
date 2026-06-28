@@ -301,30 +301,57 @@
 </main>
 
 <script>
-const PROXY = "http://localhost:5000";
+// ── Base de dados ─────────────────────────────────────────────────────────────
+let DB = [];
+let DB_META = { total: 0, data: "—" };
+let dbReady = false;
 
-const LOCAL_DB = [
-  { nome:"Daflon",          principio:"Diosmina + Hesperidina", laboratorio:"Servier",     tipo:"etico",    tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"C05C" },
-  { nome:"Flavonid",        principio:"Diosmina + Hesperidina", laboratorio:"Aché",        tipo:"similar",  tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"C05C" },
-  { nome:"Venaflon",        principio:"Diosmina + Hesperidina", laboratorio:"Neo Química", tipo:"generico", tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"C05C" },
-  { nome:"Losec",           principio:"Omeprazol",              laboratorio:"AstraZeneca", tipo:"etico",    tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"20mg cápsula",     classe:"A02B" },
-  { nome:"Omeprazol EMS",   principio:"Omeprazol",              laboratorio:"EMS",         tipo:"generico", tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"20mg cápsula",     classe:"A02B" },
-  { nome:"Peprazol",        principio:"Omeprazol",              laboratorio:"Aché",        tipo:"similar",  tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"20mg cápsula",     classe:"A02B" },
-  { nome:"Amoxil",          principio:"Amoxicilina",            laboratorio:"GSK",         tipo:"etico",    tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg cápsula",    classe:"J01C" },
-  { nome:"Amoxicilina EMS", principio:"Amoxicilina",            laboratorio:"EMS",         tipo:"generico", tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg cápsula",    classe:"J01C" },
-  { nome:"Novalgina",       principio:"Dipirona Sódica",        laboratorio:"Sanofi",      tipo:"etico",    tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"N02B" },
-  { nome:"Dipirona Neo",    principio:"Dipirona Sódica",        laboratorio:"Neo Química", tipo:"generico", tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"N02B" },
-  { nome:"Claritin",        principio:"Loratadina",             laboratorio:"MSD",         tipo:"etico",    tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"10mg comprimido",  classe:"R06A" },
-  { nome:"Loratadina EMS",  principio:"Loratadina",             laboratorio:"EMS",         tipo:"generico", tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"10mg comprimido",  classe:"R06A" },
-];
+async function carregarDB() {
+  updateDBUI("loading");
+  try {
+    const r = await fetch("medicamentos.json");
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    DB = await r.json();
+    DB_META.total = DB.length;
+    DB_META.data  = new Date().toLocaleDateString("pt-BR");
+    dbReady = true;
+    updateDBUI("online");
+  } catch(e) {
+    dbReady = false;
+    updateDBUI("offline");
+    console.error("Erro ao carregar medicamentos.json:", e);
+  }
+}
 
+function updateDBUI(state) {
+  const pill = document.getElementById("proxyPill");
+  const ban  = document.getElementById("banner");
+  const bt   = document.getElementById("bannerText");
+  if (state === "online") {
+    pill.className = "proxy-pill online";
+    pill.textContent = `✓ ${DB_META.total.toLocaleString("pt-BR")} medicamentos`;
+    ban.className = "banner online";
+    bt.innerHTML = `<strong>Base CMED carregada</strong> — <strong>${DB_META.total.toLocaleString("pt-BR")} medicamentos</strong> da tabela oficial CMED/ANVISA. A busca expande automaticamente pelo princípio ativo, retornando Éticos, Similares e Genéricos.`;
+  } else if (state === "loading") {
+    pill.className = "proxy-pill check";
+    pill.textContent = "⏳ Carregando…";
+    ban.className = "banner check";
+    bt.innerHTML = `Carregando base de medicamentos…`;
+  } else {
+    pill.className = "proxy-pill offline";
+    pill.textContent = "⚠ Erro ao carregar base";
+    ban.className = "banner offline";
+    bt.innerHTML = `<strong>Erro ao carregar medicamentos.json.</strong> Verifique se o arquivo está na mesma pasta do index.html e recarregue a página.`;
+  }
+}
+
+// ── Histórico ─────────────────────────────────────────────────────────────────
 const QUICK_DEFAULT = ["Diosmina + Hesperidina","Omeprazol","Amoxicilina","Dipirona","Losartana","Atorvastatina","Metformina","Loratadina","Ibuprofeno"];
 const HIST_KEY = "farma_hist_v1";
 const HIST_MAX = 12;
 
-let allResults = [], filtroAtivo = "todos", viewMode = "expandida", proxyOnline = false, statusData = null;
+let allResults = [], filtroAtivo = "todos", viewMode = "expandida";
 
-// ── Histórico ─────────────────────────────────────────────────────────────────
 function getHist() {
   try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch(e) { return []; }
 }
@@ -346,7 +373,6 @@ function renderQuickTags() {
   const hist = getHist();
   wrap.innerHTML = "";
   if (hist.length > 0) {
-    // Histórico de buscas
     hist.forEach(s => {
       const b = document.createElement("button");
       b.className = "hist-tag";
@@ -354,7 +380,6 @@ function renderQuickTags() {
       b.onclick = () => { document.getElementById("searchInput").value = s; doSearch(); };
       wrap.appendChild(b);
     });
-    // Botão limpar histórico
     const cl = document.createElement("button");
     cl.className = "quick-tag";
     cl.style.cssText = "color:var(--gray-light);border-color:var(--border);font-size:11px;padding:4px 10px";
@@ -362,7 +387,6 @@ function renderQuickTags() {
     cl.onclick = clearHist;
     wrap.appendChild(cl);
   } else {
-    // Sem histórico: buscas padrão
     QUICK_DEFAULT.forEach(s => {
       const b = document.createElement("button");
       b.className = "quick-tag"; b.textContent = s;
@@ -372,6 +396,7 @@ function renderQuickTags() {
   }
 }
 
+// ── Init ──────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   renderQuickTags();
   const inp = document.getElementById("searchInput");
@@ -379,137 +404,121 @@ document.addEventListener("DOMContentLoaded", () => {
   inp.addEventListener("input", onInputChange);
   document.addEventListener("click", e => { if(!e.target.closest(".search-wrap")) closeSug(); });
   renderWelcome();
-  checkProxy();
-  setInterval(checkProxy, 15000);
+  carregarDB();
 });
 
-async function checkProxy() {
-  try {
-    const r = await fetch(`${PROXY}/status`, { signal: AbortSignal.timeout(2500) });
-    const d = await r.json();
-    proxyOnline = d.status === "ok";
-    statusData = d;
-  } catch(e) { proxyOnline = false; statusData = null; }
-  updateProxyUI();
-}
-
-function updateProxyUI() {
-  const pill = document.getElementById("proxyPill");
-  const ban  = document.getElementById("banner");
-  const bt   = document.getElementById("bannerText");
-  if (proxyOnline) {
-    const tot = statusData?.total?.toLocaleString("pt-BR") || "?";
-    const dt  = statusData?.base || "?";
-    pill.className = "proxy-pill online";
-    pill.textContent = "✓ Base CMED ativa";
-    ban.className = "banner online";
-    bt.innerHTML = `<strong>Proxy CMED ativo</strong> — <strong>${tot} medicamentos</strong> indexados da tabela oficial CMED/ANVISA (${dt}). A busca expande automaticamente pelo princípio ativo, retornando Éticos, Similares e Genéricos.`;
-  } else {
-    pill.className = "proxy-pill offline";
-    pill.textContent = "⚠ Proxy offline";
-    ban.className = "banner offline";
-    bt.innerHTML = `<strong>Proxy offline</strong> — exibindo base local de amostra. Para busca completa com 28.000+ medicamentos, execute <code style="background:#fef3c7;padding:1px 5px;border-radius:3px;font-size:12px">python proxy_anvisa.py</code> e recarregue.`;
-  }
+// ── Sugestões ─────────────────────────────────────────────────────────────────
+function normalizar(s) {
+  return String(s).normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();
 }
 
 function onInputChange() {
   const val = this.value.trim();
   if(val.length < 2) { closeSug(); return; }
   clearTimeout(window._st);
-  window._st = setTimeout(async () => {
-    let matches = [];
-    if (proxyOnline) {
-      try {
-        const r = await fetch(`${PROXY}/anvisa/sugestoes?q=${encodeURIComponent(val)}`, { signal: AbortSignal.timeout(2000) });
-        if(r.ok) matches = await r.json();
-      } catch(e) {}
-    }
-    if (!matches.length) {
-      const v = val.toLowerCase();
-      matches = [...new Set(LOCAL_DB.filter(m => m.principio.toLowerCase().includes(v) || m.nome.toLowerCase().includes(v)).map(m => m.principio))].slice(0,6);
+  window._st = setTimeout(() => {
+    const vn = normalizar(val);
+    const matches = [];
+    const vistos = new Set();
+    if (dbReady) {
+      for (const m of DB) {
+        const pn = normalizar(m.principio);
+        const nn = normalizar(m.nome);
+        if ((pn.includes(vn) || nn.includes(vn)) && !vistos.has(m.principio)) {
+          vistos.add(m.principio);
+          matches.push(m.principio);
+          if (matches.length >= 8) break;
+        }
+      }
     }
     if (!matches.length) { closeSug(); return; }
     const box = document.getElementById("suggestionsBox");
-    const ve = val.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    const ve = val.replace(/[.*+?^${}()|[\]\]/g,"\$&");
     box.innerHTML = matches.map(p => {
       const hl = p.replace(new RegExp("("+ve+")","gi"),"<strong>$1</strong>");
-      return `<div class="suggestion-item" onclick="selSug('${p.replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>${hl}</div>`;
+      return `<div class="suggestion-item" onclick="selSug('${p.replace(/'/g,"\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>${hl}</div>`;
     }).join("");
     box.classList.add("open");
-  }, 260);
+  }, 220);
 }
 function selSug(t) { document.getElementById("searchInput").value = t; closeSug(); doSearch(); }
 function closeSug() { document.getElementById("suggestionsBox").classList.remove("open"); }
 
+// ── Busca ─────────────────────────────────────────────────────────────────────
 async function doSearch() {
   const raw = document.getElementById("searchInput").value.trim();
-  if(!raw) return;
+  if (!raw) return;
   closeSug();
+
+  if (!dbReady) {
+    document.getElementById("statusBar").innerHTML = `<span class="status-text" style="color:var(--amber)">⏳ Base ainda carregando, aguarde…</span>`;
+    return;
+  }
+
   setLoading(true);
   filtroAtivo = "todos";
   document.querySelectorAll(".filter-btn").forEach(b => {
     b.className = "filter-btn" + (b.dataset.t==="todos" ? " fa" : "");
   });
 
-  let results = [], fonte = "local";
-  if (proxyOnline) {
-    try { results = await fetchProxy(raw); fonte = "cmed"; }
-    catch(e) { results = searchLocal(raw); }
-  } else {
-    results = searchLocal(raw);
-  }
+  const results = searchDB(raw);
   allResults = results;
   setLoading(false);
   addHist(raw);
-  renderResults(raw, fonte);
+  renderResults(raw);
 }
 
-async function fetchProxy(query) {
-  // Busca 1: pelo termo digitado (nome comercial)
-  const r1 = await fetch(`${PROXY}/anvisa/medicamentos?q=${encodeURIComponent(query)}&count=200`, { signal: AbortSignal.timeout(10000) });
-  if(!r1.ok) throw new Error("proxy err");
-  const d1 = await r1.json();
-  if(d1.erro) throw new Error(d1.erro);
-  let exact = d1.resultados || [];
-  if(!exact.length) throw new Error("sem resultados");
+function searchDB(query) {
+  const qn = normalizar(query);
+  const terms = qn.split(/[\s+,]+/).filter(t => t.length >= 3);
 
-  // Marca os que vieram da busca exata (nome pesquisado)
-  const qLow = query.toLowerCase();
-  exact = exact.map(m => ({ ...m, _exact: m.nome.toLowerCase().includes(qLow) }));
+  // Passo 1: encontra hits diretos (nome ou principio contém a query)
+  const exact = [];
+  const principiosAchados = new Set();
 
-  // Busca 2: expande pelo(s) princípio(s) ativo(s) → traz genéricos/similares
-  const principios = [...new Set(exact.map(m => m.principio.split(/[;,]/)[0].trim()).filter(Boolean))].slice(0, 3);
-  let extra = [];
-  for (const p of principios) {
-    if (p.toLowerCase() === qLow) continue;
-    try {
-      const r2 = await fetch(`${PROXY}/anvisa/medicamentos?q=${encodeURIComponent(p)}&count=200`, { signal: AbortSignal.timeout(8000) });
-      if(!r2.ok) continue;
-      const d2 = await r2.json();
-      const novos = (d2.resultados || []).filter(r => !exact.some(x => x.nome===r.nome && x.registro===r.registro));
-      extra = [...extra, ...novos];
-    } catch(e) {}
+  for (const m of DB) {
+    const haystack = normalizar(m.nome + " " + m.principio + " " + m.laboratorio);
+    if (terms.every(t => haystack.includes(t))) {
+      exact.push({ ...m, _exact: normalizar(m.nome).includes(qn) });
+      // Coleta o primeiro termo de cada princípio ativo para expansão
+      m.principio.split(/[;,]/).forEach(p => {
+        const pn = normalizar(p.trim());
+        if (pn.length >= 4) principiosAchados.add(pn);
+      });
+    }
   }
 
-  // Combina: pesquisado exato primeiro (ordenado por tipo), depois expansão
-  const ordemTipo = ["etico","similar","generico","outros"];
-  const sortTipo = (a,b) => ordemTipo.indexOf(a.tipo) - ordemTipo.indexOf(b.tipo);
-  exact.sort(sortTipo);
-  extra.sort(sortTipo);
-  return [...exact, ...extra];
+  if (!exact.length) return [];
+
+  // Passo 2: expande pela base completa usando os princípios encontrados
+  const allHits = [...exact];
+  const nomes_vistos = new Set(exact.map(m => m.nome + "||" + m.laboratorio));
+
+  for (const m of DB) {
+    const key = m.nome + "||" + m.laboratorio;
+    if (nomes_vistos.has(key)) continue;
+    const princN = normalizar(m.principio);
+    // Verifica se algum princípio encontrado está contido neste medicamento
+    for (const p of principiosAchados) {
+      if (p.length >= 5 && princN.includes(p)) {
+        allHits.push({ ...m, _exact: false });
+        nomes_vistos.add(key);
+        break;
+      }
+    }
+  }
+
+  // Ordena: exatos primeiro (por tipo), depois expansão (por tipo)
+  const ordemTipo = ["etico","similar","generico","biologico","fitoterapico","homeopatico","outros"];
+  const sortFn = (a,b) => {
+    if (a._exact !== b._exact) return a._exact ? -1 : 1;
+    return (ordemTipo.indexOf(a.tipo)||99) - (ordemTipo.indexOf(b.tipo)||99);
+  };
+  allHits.sort(sortFn);
+  return allHits;
 }
 
-function searchLocal(query) {
-  const terms = query.toLowerCase().replace(/[®]/g,"").split(/[\s+,]+/).filter(t=>t.length>2);
-  const hits = LOCAL_DB.filter(m => {
-    const h = (m.nome+" "+m.principio+" "+m.laboratorio).toLowerCase();
-    return terms.every(t => h.includes(t));
-  });
-  if(!hits.length) return hits;
-  const princs = [...new Set(hits.map(m => m.principio))];
-  return LOCAL_DB.filter(m => princs.some(p => m.principio.includes(p.split(" ")[0])));
-}
-
+// ── Filtros ───────────────────────────────────────────────────────────────────
 function setFiltro(tipo, btn) {
   filtroAtivo = tipo;
   const cls = { todos:"fa", etico:"fe", similar:"fs", generico:"fg", outros:"fo" };
@@ -526,6 +535,10 @@ function setView(mode) {
   renderCards();
 }
 
+function filteredResults() {
+  return filtroAtivo==="todos" ? allResults : allResults.filter(m=>m.tipo===filtroAtivo);
+}
+
 // ── Simplifica princípio ativo ────────────────────────────────────────────────
 const PREFIXES_PRINC = [
   "CLORIDRATO DE ","SULFATO DE ","FOSFATO DE ","BROMETO DE ","MESILATO DE ",
@@ -533,26 +546,45 @@ const PREFIXES_PRINC = [
   "CITRATO DE ","GLUCONATO DE ","MONOFOSFATO DE ","BESILATO DE ",
   "HIDROCLORETO DE ","OXALATO DE ","SUCCINATO DE ","ESTEARATO DE ",
   "PALMITATO DE ","VALERATO DE ","DECANOATO DE ","DIFOSFATO DE ",
-  "TRIFOSFATO DE ","PROPIONATO DE ","BUTIRATO DE ","CAPRILATO DE ",
+  "TRIFOSFATO DE ","PROPIONATO DE ","BUTIRATO DE ",
 ];
-const SUFFIXES_PRINC = /\s+(SÓDICO|SÓDICA|POTÁSSICO|POTÁSSICA|DISSÓDICO|ANIDRO|ANIDRA|MONOIDRATADO|MONOIDRATADA|TRIIDRATADO|TRIIDRATADA|TROMETAMOL|HEMISUCCINATO|HEMISSUCCINATO|MICRONIZADO|MICRONIZADA|MONO-HIDRATADO)\s*$/i;
+const SUFFIXES_PRINC = /\s+(SÓDICO|SÓDICA|POTÁSSICO|POTÁSSICA|DISSÓDICO|ANIDRO|ANIDRA|MONOIDRATADO|MONOIDRATADA|TRIIDRATADO|TRIIDRATADA|TROMETAMOL|HEMISUCCINATO|HEMISSUCCINATO|MICRONIZADO|MICRONIZADA)\s*$/i;
 
 function simplifyPrincipio(raw) {
   if (!raw) return raw;
-  const parts = raw.split(/[;,]/).map(p => p.trim()).filter(Boolean);
-  return parts.map(part => {
-    let s = part.toUpperCase();
+  return raw.split(/[;,]/).map(p => {
+    let s = p.trim().toUpperCase();
     PREFIXES_PRINC.forEach(pre => { s = s.split(pre).join(""); });
     s = s.replace(SUFFIXES_PRINC, "").trim();
-    // Title case preservando a string
     return s.charAt(0) + s.slice(1).toLowerCase();
-  }).join(" + ");
+  }).filter(Boolean).join(" + ");
 }
 
-function filteredResults() {
-  return filtroAtivo==="todos" ? allResults : allResults.filter(m=>m.tipo===filtroAtivo);
+// ── Agrupamento ───────────────────────────────────────────────────────────────
+function groupResults(list) {
+  const map = new Map();
+  list.forEach(m => {
+    const key = `${m.nome.trim().toUpperCase()}||${m.laboratorio.trim()}||${m.tipo}`;
+    if (!map.has(key)) {
+      map.set(key, { ...m, apresentacoes: [] });
+    }
+    const g = map.get(key);
+    if (m.apresentacao && !g.apresentacoes.includes(m.apresentacao)) {
+      g.apresentacoes.push(m.apresentacao);
+    }
+    if (m.pf) {
+      const vPF = parseFloat(m.pf.replace("R$ ","").replace(".","").replace(",","."));
+      if (!g._pfMin || vPF < g._pfMin) { g._pfMin = vPF; g.pf = m.pf; }
+    }
+    if (m.pmc) {
+      const vPMC = parseFloat(m.pmc.replace("R$ ","").replace(".","").replace(",","."));
+      if (!g._pmcMax || vPMC > g._pmcMax) { g._pmcMax = vPMC; g.pmc = m.pmc; }
+    }
+  });
+  return [...map.values()];
 }
 
+// ── Render ────────────────────────────────────────────────────────────────────
 function setLoading(v) {
   document.getElementById("searchBtn").disabled = v;
   document.getElementById("searchBtn").innerHTML = v
@@ -573,16 +605,18 @@ function renderWelcome() {
   </div>`;
 }
 
-function renderResults(query, fonte) {
+function renderResults(query) {
   const cnt = { etico:0, similar:0, generico:0, outros:0 };
   allResults.forEach(m => { if(cnt[m.tipo]!==undefined) cnt[m.tipo]++; else cnt.outros++; });
   const total = allResults.length;
-  const ftag = fonte==="cmed"
-    ? `<span style="font-size:12px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 9px;border-radius:10px;font-weight:700;margin-left:8px">CMED/ANVISA</span>`
-    : `<span style="font-size:12px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:2px 9px;border-radius:10px;font-weight:700;margin-left:8px">Base local</span>`;
 
-  if(!total) {
-    document.getElementById("statusBar").innerHTML = `<span class="status-text">Nenhum resultado para <em>"${query}"</em>${ftag}</span>`;
+  const grouped = groupResults(allResults);
+  const gcnt = { etico:0, similar:0, generico:0, outros:0 };
+  grouped.forEach(m => { if(gcnt[m.tipo]!==undefined) gcnt[m.tipo]++; else gcnt.outros++; });
+  const gtotal = grouped.length;
+
+  if (!gtotal) {
+    document.getElementById("statusBar").innerHTML = `<span class="status-text">Nenhum resultado para <em style="font-style:normal;font-weight:700;color:var(--blue-dark)">"${query}"</em></span>`;
     document.getElementById("filterRow").style.display = "none";
     document.getElementById("results").innerHTML = `<div class="state-box">
       <svg class="state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
@@ -592,14 +626,8 @@ function renderResults(query, fonte) {
     return;
   }
 
-  // Conta após agrupamento
-  const grouped = groupResults(allResults);
-  const gcnt = { etico:0, similar:0, generico:0, outros:0 };
-  grouped.forEach(m => { if(gcnt[m.tipo]!==undefined) gcnt[m.tipo]++; else gcnt.outros++; });
-  const gtotal = grouped.length;
-
   document.getElementById("statusBar").innerHTML = `
-    <span class="status-text">${gtotal} medicamento${gtotal>1?"s":""} para <em>"${query}"</em> ${total!==gtotal?`<span style="font-size:12px;color:var(--gray-light)">(${total} apresentações agrupadas)</span>`:""} ${ftag}</span>
+    <span class="status-text">${gtotal} medicamento${gtotal>1?"s":""} para <em style="font-style:normal;font-weight:700;color:var(--blue-dark)">"${query}"</em>${total!==gtotal?` <span style="font-size:12px;color:var(--gray-light)">(${total} apresentações agrupadas)</span>`:""}</span>
     <div class="status-counts">
       ${gcnt.etico   ?`<span class="count-chip chip-e">${gcnt.etico} Ético${gcnt.etico>1?"s":""}</span>`:""}
       ${gcnt.similar ?`<span class="count-chip chip-s">${gcnt.similar} Similar${gcnt.similar>1?"es":""}</span>`:""}
@@ -610,36 +638,10 @@ function renderResults(query, fonte) {
   renderCards();
 }
 
-// ── Agrupa medicamentos por nome + laboratório + tipo ─────────────────────────
-function groupResults(list) {
-  const map = new Map();
-  list.forEach(m => {
-    const key = `${m.nome.trim().toUpperCase()}||${m.laboratorio.trim()}||${m.tipo}`;
-    if (!map.has(key)) {
-      map.set(key, { ...m, apresentacoes: [] });
-    }
-    const g = map.get(key);
-    // Coleta apresentações únicas
-    if (m.apresentacao && !g.apresentacoes.includes(m.apresentacao)) {
-      g.apresentacoes.push(m.apresentacao);
-    }
-    // Guarda faixa de preços (menor PF, maior PMC)
-    if (m.pf) {
-      const vPF = parseFloat(m.pf.replace("R$ ","").replace(".","").replace(",","."));
-      if (!g._pfMin || vPF < g._pfMin) { g._pfMin = vPF; g.pf = m.pf; }
-    }
-    if (m.pmc) {
-      const vPMC = parseFloat(m.pmc.replace("R$ ","").replace(".","").replace(",","."));
-      if (!g._pmcMax || vPMC > g._pmcMax) { g._pmcMax = vPMC; g.pmc = m.pmc; }
-    }
-  });
-  return [...map.values()];
-}
-
 function renderCards() {
   const list = filteredResults();
   const wrap = document.getElementById("results");
-  if(!list.length) {
+  if (!list.length) {
     wrap.innerHTML = `<div class="state-box">
       <svg class="state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
       <div class="state-title">Nenhum resultado nesta categoria</div>
@@ -648,9 +650,7 @@ function renderCards() {
     return;
   }
 
-  // Agrupa antes de renderizar
   const grouped = groupResults(list);
-
   const shInfo = {
     etico:   { label:"Éticos — Medicamento de Referência", cls:"sh-e" },
     similar: { label:"Similares",                          cls:"sh-s" },
@@ -662,7 +662,7 @@ function renderCards() {
     let h = `<div class="results-list">`;
     let last = null;
     grouped.forEach(m => {
-      if(m.tipo !== last && filtroAtivo==="todos") {
+      if (m.tipo !== last && filtroAtivo==="todos") {
         const i = shInfo[m.tipo] || shInfo.outros;
         h += `<div class="section-header" style="margin-top:10px"><div class="sh-line"></div><span class="sh-label ${i.cls}">${i.label}</span><div class="sh-line"></div></div>`;
         last = m.tipo;
@@ -675,7 +675,7 @@ function renderCards() {
     let h = `<div class="results-grid">`;
     let last = null;
     grouped.forEach(m => {
-      if(m.tipo !== last && filtroAtivo==="todos") {
+      if (m.tipo !== last && filtroAtivo==="todos") {
         const i = shInfo[m.tipo] || shInfo.outros;
         h += `<div class="section-header"><div class="sh-line"></div><span class="sh-label ${i.cls}">${i.label}</span><div class="sh-line"></div></div>`;
         last = m.tipo;
@@ -707,11 +707,11 @@ function cardResumidoHTML(m) {
 
 function cardHTML(m) {
   const cc = { etico:"te be", similar:"ts bs", generico:"tg bg", outros:"to bo" };
-  const cl = m.tipo in cc ? cc[m.tipo].split(" ") : ["to","bo"];
+  const cl = (m.tipo in cc ? cc[m.tipo] : "to bo").split(" ");
   const tl = { etico:"Ético · Referência", similar:"Similar", generico:"Genérico", outros:"Outro" };
 
   let tarjaHtml = "";
-  if(m.tarja) {
+  if (m.tarja) {
     const t = m.tarja.toLowerCase();
     const tc = t.includes("pret") ? "tpreta" : t.includes("verm") ? "tverm" : "tsem";
     const tl2 = t.includes("pret") ? "Tarja Preta" : t.includes("verm") ? "Tarja Vermelha" : "Sem Tarja";
@@ -719,12 +719,18 @@ function cardHTML(m) {
   }
 
   let precosHtml = "";
-  if(m.pf || m.pmc) {
+  if (m.pf || m.pmc) {
     precosHtml = `<hr class="card-divider"><div class="precos-row">
       ${m.pf  ?`<div class="preco-item"><span class="preco-label">Preço Fábrica</span><span class="preco-pf">${m.pf}</span></div>`:""}
       ${m.pmc ?`<div class="preco-item"><span class="preco-label">PMC (máx. consumidor)</span><span class="preco-pmc">${m.pmc}</span></div>`:""}
     </div>`;
   }
+
+  const apList = m.apresentacoes && m.apresentacoes.length > 0 ? m.apresentacoes : (m.apresentacao && m.apresentacao!=="nan" ? [m.apresentacao] : []);
+  const apresentacaoHtml = apList.length === 0 ? "" :
+    apList.length === 1
+      ? `<div class="card-field"><div class="field-label">Apresentação</div><div class="field-val" style="font-size:13px">${apList[0]}</div></div>`
+      : `<div class="card-field"><div class="field-label">Apresentações (${apList.length})</div><ul style="list-style:none;padding:0;margin:2px 0 0">${apList.map(a=>`<li style="font-size:12px;color:var(--gray-mid);padding:2px 0;border-bottom:1px solid var(--border);line-height:1.3">${a}</li>`).join("")}</ul></div>`;
 
   const fotoQ = encodeURIComponent(`embalagem ${m.nome} medicamento`);
   const hospHtml = m.hospitalar ? `<span class="hosp-badge">Uso hospitalar</span>` : "";
@@ -742,12 +748,7 @@ function cardHTML(m) {
         <div class="field-label">Princípio ativo</div>
         <div class="field-val field-princ">${m.principio}</div>
       </div>
-      ${(() => {
-        const apList = m.apresentacoes && m.apresentacoes.length > 0 ? m.apresentacoes : (m.apresentacao && m.apresentacao!=="nan" && m.apresentacao!=="" ? [m.apresentacao] : []);
-        if (!apList.length) return "";
-        if (apList.length === 1) return `<div class="card-field"><div class="field-label">Apresentação</div><div class="field-val" style="font-size:13px">${apList[0]}</div></div>`;
-        return `<div class="card-field"><div class="field-label">Apresentações (${apList.length})</div><ul style="list-style:none;padding:0;margin:2px 0 0">${apList.map(a=>`<li style="font-size:12px;color:var(--gray-mid);padding:2px 0;border-bottom:1px solid var(--border);line-height:1.3">${a}</li>`).join("")}</ul></div>`;
-      })()}
+      ${apresentacaoHtml}
       <div class="card-field">
         <div class="field-label">Laboratório</div>
         <div class="field-val">${m.laboratorio||"—"}</div>

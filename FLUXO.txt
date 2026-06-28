@@ -1,0 +1,22 @@
+4.157 éticos agora mapeados corretamente. Agora reescrevo o `index.html` para usar `fetch("medicamentos.json")` no lugar do proxy:Tenho o quadro completo. Vou reescrever o bloco JS inteiro — removendo proxy, LOCAL_DB e `checkProxy`, e substituindo por carregamento do JSON:Dois arquivos entregues. O que mudou:
+
+**Arquitetura agora é 100% estática — sem proxy**
+
+O `index.html` faz `fetch("medicamentos.json")` ao carregar. O GitHub Pages serve os dois arquivos normalmente. Estrutura do repositório:
+
+```
+seu-repositorio/
+├── index.html          ← front-end
+└── medicamentos.json   ← 28.400 medicamentos (10 MB)
+```
+
+**O `medicamentos.json` entregue já está corrigido** — os 4.157 medicamentos de referência agora aparecem como `"etico"` em vez de `"outros"`, então os badges e filtros vão funcionar corretamente.
+
+**Fluxo de atualização mensal:**
+1. Baixa o novo XLS da CMED
+2. Coloca em `cmed_cache/conformidade.xls`
+3. Roda `python proxy_anvisa.py --atualizar`
+4. Copia `cmed_cache/medicamentos.json` para a pasta do repositório
+5. Commit + push
+
+**O proxy ainda serve** para uso local na drogaria se quiser — mas agora é opcional, não obrigatório.
