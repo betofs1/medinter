@@ -433,10 +433,14 @@ function onInputChange() {
     }
     if (!matches.length) { closeSug(); return; }
     const box = document.getElementById("suggestionsBox");
-    const ve = val.replace(/[.*+?^${}()|[\]\]/g,"\$&");
-    box.innerHTML = matches.map(p => {
-      const hl = p.replace(new RegExp("("+ve+")","gi"),"<strong>$1</strong>");
-      return `<div class="suggestion-item" onclick="selSug('${p.replace(/'/g,"\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>${hl}</div>`;
+    box.innerHTML = matches.map(function(p) {
+      var lo = p.toLowerCase(), vl = val.toLowerCase();
+      var idx2 = lo.indexOf(vl);
+      var hl = idx2 >= 0
+        ? p.slice(0,idx2) + "<strong>" + p.slice(idx2, idx2+val.length) + "</strong>" + p.slice(idx2+val.length)
+        : p;
+      var safe = p.replace(/'/g, "&#39;");
+      return '<div class="suggestion-item" onclick="selSug(\'' + safe + '\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>' + hl + '</div>';
     }).join("");
     box.classList.add("open");
   }, 220);
