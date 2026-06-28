@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medicamentos Intercambiáveis</title>
+<style>
+  :root {
+    --blue:        #1d4ed8;
+    --blue-dark:   #1e3a8a;
+    --blue-mid:    #2563eb;
+    --blue-light:  #3b82f6;
+    --blue-pale:   #dbeafe;
+    --blue-xpale:  #eff6ff;
+    --green:       #15803d;
+    --green-pale:  #dcfce7;
+    --amber:       #b45309;
+    --amber-pale:  #fef3c7;
+    --purple:      #6d28d9;
+    --purple-pale: #ede9fe;
+    --gray:        #374151;
+    --gray-mid:    #6b7280;
+    --gray-light:  #9ca3af;
+    --gray-pale:   #f3f4f6;
+    --border:      #e5e7eb;
+    --border-mid:  #d1d5db;
+    --white:       #ffffff;
+    --radius:      10px;
+    --shadow:      0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md:   0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4ff; color: var(--gray); min-height: 100vh; font-size: 16px; line-height: 1.5; }
+
+  .header { background: var(--blue-dark); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 62px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); position: sticky; top: 0; z-index: 100; }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-icon { width: 38px; height: 38px; background: rgba(255,255,255,0.15); border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+  .header-icon svg { width: 22px; height: 22px; }
+  .header-title { font-size: 18px; font-weight: 700; color: #fff; }
+  .header-sub { font-size: 11px; color: rgba(255,255,255,0.6); letter-spacing: 0.8px; text-transform: uppercase; }
+  .proxy-pill { font-size: 12px; padding: 4px 12px; border-radius: 20px; font-weight: 600; }
+  .proxy-pill.online  { background: rgba(21,128,61,0.25);  color: #86efac; border: 1px solid rgba(21,128,61,0.4); }
+  .proxy-pill.offline { background: rgba(180,83,9,0.25);   color: #fcd34d; border: 1px solid rgba(180,83,9,0.4); }
+  .proxy-pill.check   { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); border: 1px solid rgba(255,255,255,0.15); }
+
+  .main { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  .banner { border-radius: var(--radius); padding: 11px 16px; margin-bottom: 22px; font-size: 13px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.5; }
+  .banner.online  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+  .banner.offline { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .banner.check   { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .banner svg { flex-shrink: 0; margin-top: 2px; }
+
+  .search-section { margin-bottom: 20px; }
+  .search-label { display: block; font-size: 12px; font-weight: 700; color: var(--blue-dark); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+  .search-wrap { position: relative; display: flex; gap: 10px; align-items: stretch; }
+  .search-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--gray-light); pointer-events: none; }
+  #searchInput { flex: 1; background: var(--white); border: 2px solid var(--border-mid); border-radius: var(--radius); color: var(--gray); font-size: 17px; padding: 13px 14px 13px 46px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; box-shadow: var(--shadow); }
+  #searchInput::placeholder { color: var(--gray-light); }
+  #searchInput:focus { border-color: var(--blue-light); box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  #searchBtn { background: var(--blue-mid); color: #fff; border: none; border-radius: var(--radius); padding: 13px 26px; font-size: 15px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap; transition: background 0.15s, transform 0.1s; box-shadow: var(--shadow-md); letter-spacing: 0.3px; }
+  #searchBtn:hover  { background: var(--blue); }
+  #searchBtn:active { transform: scale(0.97); }
+  #searchBtn:disabled { background: var(--gray-light); cursor: not-allowed; box-shadow: none; }
+
+  .suggestions-box { position: absolute; top: calc(100% + 5px); left: 0; right: 110px; background: var(--white); border: 1px solid var(--border-mid); border-radius: var(--radius); box-shadow: var(--shadow-md); z-index: 50; overflow: hidden; display: none; }
+  .suggestions-box.open { display: block; }
+  .suggestion-item { padding: 10px 15px; font-size: 14px; cursor: pointer; color: var(--gray); border-bottom: 1px solid var(--border); transition: background 0.1s; display: flex; align-items: center; gap: 8px; }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: var(--blue-xpale); color: var(--blue); }
+  .suggestion-item strong { color: var(--blue-mid); }
+
+  .quick-label { font-size: 11px; font-weight: 700; color: var(--gray-mid); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 8px; display: block; }
+  .quick-tags  { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 24px; }
+  .quick-tag   { background: var(--white); border: 1.5px solid var(--border-mid); border-radius: 20px; padding: 5px 14px; font-size: 13px; color: var(--gray-mid); cursor: pointer; transition: all 0.15s; font-weight: 500; box-shadow: var(--shadow); }
+  .quick-tag:hover { border-color: var(--blue-light); color: var(--blue-mid); background: var(--blue-xpale); }
+
+  .filter-row   { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; padding: 12px 16px; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); align-items: center; }
+  .filter-label { font-size: 12px; font-weight: 700; color: var(--gray-mid); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 4px; white-space: nowrap; }
+  .filter-btn   { background: var(--gray-pale); border: 1.5px solid var(--border); border-radius: 20px; color: var(--gray-mid); font-size: 13px; font-weight: 600; padding: 5px 15px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+  .filter-btn:hover { border-color: var(--blue-light); color: var(--blue-mid); }
+  .filter-btn.fa { background: var(--blue-pale);   border-color: var(--blue-light); color: var(--blue-dark); }
+  .filter-btn.fe { background: var(--blue-pale);   border-color: var(--blue-light); color: var(--blue-dark); }
+  .filter-btn.fs { background: var(--amber-pale);  border-color: #fbbf24;           color: var(--amber); }
+  .filter-btn.fg { background: var(--green-pale);  border-color: #86efac;           color: var(--green); }
+  .filter-btn.fo { background: var(--purple-pale); border-color: #c4b5fd;           color: var(--purple); }
+  .filter-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  .status-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; min-height: 30px; flex-wrap: wrap; gap: 8px; }
+  .status-text { font-size: 14px; color: var(--gray-mid); }
+  .status-text em { font-style: normal; font-weight: 700; color: var(--blue-dark); }
+  .status-counts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .count-chip { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 12px; border: 1px solid; }
+  .chip-e { background: var(--blue-pale);   border-color: #93c5fd; color: var(--blue-dark); }
+  .chip-s { background: var(--amber-pale);  border-color: #fcd34d; color: var(--amber); }
+  .chip-g { background: var(--green-pale);  border-color: #86efac; color: var(--green); }
+  .chip-o { background: var(--purple-pale); border-color: #c4b5fd; color: var(--purple); }
+
+  .spinner { display: inline-block; width: 17px; height: 17px; border: 2.5px solid var(--border-mid); border-top-color: var(--blue-mid); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(295px, 1fr)); gap: 14px; }
+
+  .med-card { background: var(--white); border: 1.5px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s; }
+  .med-card:hover { border-color: var(--blue-light); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .med-card.te { border-top: 3px solid var(--blue-mid); }
+  .med-card.ts { border-top: 3px solid #f59e0b; }
+  .med-card.tg { border-top: 3px solid var(--green); }
+  .med-card.to { border-top: 3px solid var(--gray-light); }
+
+  .card-header { padding: 13px 15px 10px; background: var(--gray-pale); border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .card-header-left { flex: 1; min-width: 0; }
+  .card-name { font-size: 16px; font-weight: 800; color: var(--blue-dark); line-height: 1.2; margin-bottom: 3px; }
+  .card-registro { font-size: 11px; color: var(--gray-light); }
+
+  .tipo-badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; }
+  .be { background: var(--blue-pale);   color: var(--blue-dark);  border: 1px solid #93c5fd; }
+  .bs { background: var(--amber-pale);  color: var(--amber);      border: 1px solid #fcd34d; }
+  .bg { background: var(--green-pale);  color: var(--green);      border: 1px solid #86efac; }
+  .bo { background: var(--purple-pale); color: var(--purple);     border: 1px solid #c4b5fd; }
+
+  .card-body { padding: 12px 15px 14px; }
+  .card-field { margin-bottom: 8px; }
+  .card-field:last-child { margin-bottom: 0; }
+  .field-label { font-size: 10px; font-weight: 700; color: var(--gray-light); text-transform: uppercase; letter-spacing: 0.7px; margin-bottom: 2px; }
+  .field-val   { font-size: 14px; color: var(--gray); font-weight: 500; line-height: 1.3; }
+  .field-princ { color: var(--blue-dark); font-weight: 700; font-size: 13px; }
+  .card-divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
+  .precos-row { display: flex; gap: 14px; flex-wrap: wrap; }
+  .preco-item { display: flex; flex-direction: column; }
+  .preco-label { font-size: 10px; font-weight: 700; color: var(--gray-light); text-transform: uppercase; letter-spacing: 0.5px; }
+  .preco-pf  { font-size: 14px; font-weight: 700; color: var(--gray); }
+  .preco-pmc { font-size: 14px; font-weight: 700; color: var(--green); }
+
+  .tarja-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; letter-spacing: 0.4px; text-transform: uppercase; margin-top: 6px; }
+  .tpreta  { background: #111827; color: #fff; }
+  .tverm   { background: #ef4444; color: #fff; }
+  .tsem    { background: var(--border); color: var(--gray-mid); }
+
+  .foto-btn { display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 6px 13px; background: var(--blue-xpale); color: var(--blue-mid); border: 1.5px solid var(--blue-pale); border-radius: 7px; font-size: 12px; font-weight: 700; text-decoration: none; transition: all 0.15s; letter-spacing: 0.3px; }
+  .foto-btn:hover { background: var(--blue-pale); border-color: var(--blue-light); }
+
+  .hosp-badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: var(--purple-pale); color: var(--purple); border: 1px solid #c4b5fd; text-transform: uppercase; margin-left: 6px; vertical-align: middle; }
+
+  .section-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; margin-top: 6px; margin-bottom: 2px; }
+  .sh-line  { flex: 1; height: 1px; background: var(--border-mid); }
+  .sh-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 14px; border-radius: 20px; white-space: nowrap; }
+  .sh-e { background: var(--blue-pale);   color: var(--blue-dark); border: 1px solid #93c5fd; }
+  .sh-s { background: var(--amber-pale);  color: var(--amber);     border: 1px solid #fcd34d; }
+  .sh-g { background: var(--green-pale);  color: var(--green);     border: 1px solid #86efac; }
+  .sh-o { background: var(--purple-pale); color: var(--purple);    border: 1px solid #c4b5fd; }
+
+  .state-box { text-align: center; padding: 70px 20px; color: var(--gray-mid); background: var(--white); border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+  .state-icon { width: 52px; height: 52px; margin: 0 auto 16px; opacity: 0.25; }
+  .state-title { font-size: 18px; font-weight: 700; color: var(--gray); margin-bottom: 6px; }
+  .state-desc  { font-size: 14px; color: var(--gray-mid); }
+
+  .disclaimer { margin-top: 36px; padding: 12px 16px; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius); font-size: 12px; color: #92400e; line-height: 1.6; }
+  .disclaimer strong { color: #78350f; }
+
+  /* VIEW TOGGLE */
+  .fv { background: var(--blue-pale) !important; border-color: var(--blue-light) !important; color: var(--blue-dark) !important; }
+
+  /* RESUMIDA CARD */
+  .card-resumida {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border-mid);
+    border-radius: 8px;
+    padding: 10px 15px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .card-resumida:hover { border-left-color: var(--blue-light); box-shadow: var(--shadow-md); }
+  .card-resumida.re { border-left-color: var(--blue-mid); }
+  .card-resumida.rs { border-left-color: #f59e0b; }
+  .card-resumida.rg { border-left-color: var(--green); }
+  .card-resumida.ro { border-left-color: var(--gray-light); }
+  .res-nome   { font-size: 15px; font-weight: 800; color: var(--blue-dark); min-width: 160px; flex-shrink: 0; }
+  .res-badge  { flex-shrink: 0; }
+  .res-princ  { font-size: 13px; color: var(--gray-mid); flex: 1; line-height: 1.3; }
+  .res-foto   { flex-shrink: 0; }
+
+  .results-list { display: flex; flex-direction: column; gap: 6px; }
+
+  /* HISTÓRICO BUSCAS */
+  .hist-tag {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 13px;
+    color: var(--blue-mid);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    transition: all 0.15s;
+    box-shadow: var(--shadow);
+  }
+  .hist-tag:hover { background: var(--blue-pale); border-color: var(--blue-light); }
+  .hist-tag svg { opacity: 0.5; }
+
+  @media (max-width: 600px) {
+    .results-grid { grid-template-columns: 1fr; }
+    .search-wrap  { flex-direction: column; }
+    #searchBtn    { justify-content: center; }
+    .suggestions-box { right: 0; }
+    .header-sub { display: none; }
+    .card-resumida { flex-wrap: wrap; }
+    .res-nome { min-width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Medicamentos Intercambiáveis</div>
+      <div class="header-sub">Encontre medicamentos de referência, genéricos e similares equivalentes.</div>
+    </div>
+  </div>
+  <span class="proxy-pill check" id="proxyPill">⏳ Verificando…</span>
+</header>
+
+<main class="main">
+
+  <div class="banner check" id="banner">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    <span id="bannerText">Verificando conexão com o proxy local…</span>
+  </div>
+
+  <section class="search-section">
+    <span class="search-label">Nome comercial ou Princípio ativo</span>
+    <div class="search-wrap">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="searchInput" type="text" placeholder="Ex: Daflon, diosmina, Monuril, amoxicilina…" autocomplete="off" spellcheck="false"/>
+      <div class="suggestions-box" id="suggestionsBox"></div>
+      <button id="searchBtn" onclick="doSearch()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Buscar
+      </button>
+    </div>
+  </section>
+
+  <span class="quick-label">Buscas rápidas</span>
+  <div class="quick-tags" id="quickTags"></div>
+
+  <div class="filter-row" id="filterRow" style="display:none">
+    <span class="filter-label">Filtrar:</span>
+    <button class="filter-btn fa" data-t="todos"    onclick="setFiltro('todos',this)">Todos</button>
+    <button class="filter-btn"    data-t="etico"    onclick="setFiltro('etico',this)">
+      <span class="filter-dot" style="background:#2563eb"></span>Éticos
+    </button>
+    <button class="filter-btn"    data-t="similar"  onclick="setFiltro('similar',this)">
+      <span class="filter-dot" style="background:#f59e0b"></span>Similares
+    </button>
+    <button class="filter-btn"    data-t="generico" onclick="setFiltro('generico',this)">
+      <span class="filter-dot" style="background:#15803d"></span>Genéricos
+    </button>
+    <button class="filter-btn"    data-t="outros"   onclick="setFiltro('outros',this)">
+      <span class="filter-dot" style="background:#9ca3af"></span>Outros
+    </button>
+    <span style="flex:1"></span>
+    <span class="filter-label" style="margin-right:4px">Exibição:</span>
+    <button class="filter-btn fv active-view" id="btnExpandida" onclick="setView('expandida')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      Expandida
+    </button>
+    <button class="filter-btn" id="btnResumida" onclick="setView('resumida')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      Resumida
+    </button>
+  </div>
+
+  <div class="status-bar" id="statusBar"></div>
+  <div id="results"></div>
+
+  <div class="disclaimer">
+    <strong>⚠ Uso profissional:</strong> Esta ferramenta é auxiliar à decisão farmacêutica. A intercambialidade de similares deve ser avaliada com base nos estudos de bioequivalência disponíveis na ANVISA. Dados oriundos da tabela CMED — sujeitos à atualização do registro sanitário.
+  </div>
+</main>
+
+<script>
+const PROXY = "http://localhost:5000";
+
+const LOCAL_DB = [
+  { nome:"Daflon",          principio:"Diosmina + Hesperidina", laboratorio:"Servier",     tipo:"etico",    tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"C05C" },
+  { nome:"Flavonid",        principio:"Diosmina + Hesperidina", laboratorio:"Aché",        tipo:"similar",  tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"C05C" },
+  { nome:"Venaflon",        principio:"Diosmina + Hesperidina", laboratorio:"Neo Química", tipo:"generico", tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"C05C" },
+  { nome:"Losec",           principio:"Omeprazol",              laboratorio:"AstraZeneca", tipo:"etico",    tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"20mg cápsula",     classe:"A02B" },
+  { nome:"Omeprazol EMS",   principio:"Omeprazol",              laboratorio:"EMS",         tipo:"generico", tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"20mg cápsula",     classe:"A02B" },
+  { nome:"Peprazol",        principio:"Omeprazol",              laboratorio:"Aché",        tipo:"similar",  tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"20mg cápsula",     classe:"A02B" },
+  { nome:"Amoxil",          principio:"Amoxicilina",            laboratorio:"GSK",         tipo:"etico",    tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg cápsula",    classe:"J01C" },
+  { nome:"Amoxicilina EMS", principio:"Amoxicilina",            laboratorio:"EMS",         tipo:"generico", tarja:"Tarja Vermelha", pf:null, pmc:null, apresentacao:"500mg cápsula",    classe:"J01C" },
+  { nome:"Novalgina",       principio:"Dipirona Sódica",        laboratorio:"Sanofi",      tipo:"etico",    tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"N02B" },
+  { nome:"Dipirona Neo",    principio:"Dipirona Sódica",        laboratorio:"Neo Química", tipo:"generico", tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"500mg comprimido", classe:"N02B" },
+  { nome:"Claritin",        principio:"Loratadina",             laboratorio:"MSD",         tipo:"etico",    tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"10mg comprimido",  classe:"R06A" },
+  { nome:"Loratadina EMS",  principio:"Loratadina",             laboratorio:"EMS",         tipo:"generico", tarja:"Sem Tarja",      pf:null, pmc:null, apresentacao:"10mg comprimido",  classe:"R06A" },
+];
+
+const QUICK_DEFAULT = ["Diosmina + Hesperidina","Omeprazol","Amoxicilina","Dipirona","Losartana","Atorvastatina","Metformina","Loratadina","Ibuprofeno"];
+const HIST_KEY = "farma_hist_v1";
+const HIST_MAX = 12;
+
+let allResults = [], filtroAtivo = "todos", viewMode = "expandida", proxyOnline = false, statusData = null;
+
+// ── Histórico ─────────────────────────────────────────────────────────────────
+function getHist() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch(e) { return []; }
+}
+function addHist(q) {
+  if (!q || q.length < 2) return;
+  let h = getHist().filter(x => x.toLowerCase() !== q.toLowerCase());
+  h.unshift(q);
+  if (h.length > HIST_MAX) h = h.slice(0, HIST_MAX);
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch(e) {}
+  renderQuickTags();
+}
+function clearHist() {
+  try { localStorage.removeItem(HIST_KEY); } catch(e) {}
+  renderQuickTags();
+}
+
+function renderQuickTags() {
+  const wrap = document.getElementById("quickTags");
+  const hist = getHist();
+  wrap.innerHTML = "";
+  if (hist.length > 0) {
+    // Histórico de buscas
+    hist.forEach(s => {
+      const b = document.createElement("button");
+      b.className = "hist-tag";
+      b.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${s}`;
+      b.onclick = () => { document.getElementById("searchInput").value = s; doSearch(); };
+      wrap.appendChild(b);
+    });
+    // Botão limpar histórico
+    const cl = document.createElement("button");
+    cl.className = "quick-tag";
+    cl.style.cssText = "color:var(--gray-light);border-color:var(--border);font-size:11px;padding:4px 10px";
+    cl.innerHTML = "✕ Limpar histórico";
+    cl.onclick = clearHist;
+    wrap.appendChild(cl);
+  } else {
+    // Sem histórico: buscas padrão
+    QUICK_DEFAULT.forEach(s => {
+      const b = document.createElement("button");
+      b.className = "quick-tag"; b.textContent = s;
+      b.onclick = () => { document.getElementById("searchInput").value = s; doSearch(); };
+      wrap.appendChild(b);
+    });
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  renderQuickTags();
+  const inp = document.getElementById("searchInput");
+  inp.addEventListener("keydown", e => { if(e.key==="Enter") doSearch(); });
+  inp.addEventListener("input", onInputChange);
+  document.addEventListener("click", e => { if(!e.target.closest(".search-wrap")) closeSug(); });
+  renderWelcome();
+  checkProxy();
+  setInterval(checkProxy, 15000);
+});
+
+async function checkProxy() {
+  try {
+    const r = await fetch(`${PROXY}/status`, { signal: AbortSignal.timeout(2500) });
+    const d = await r.json();
+    proxyOnline = d.status === "ok";
+    statusData = d;
+  } catch(e) { proxyOnline = false; statusData = null; }
+  updateProxyUI();
+}
+
+function updateProxyUI() {
+  const pill = document.getElementById("proxyPill");
+  const ban  = document.getElementById("banner");
+  const bt   = document.getElementById("bannerText");
+  if (proxyOnline) {
+    const tot = statusData?.total?.toLocaleString("pt-BR") || "?";
+    const dt  = statusData?.base || "?";
+    pill.className = "proxy-pill online";
+    pill.textContent = "✓ Base CMED ativa";
+    ban.className = "banner online";
+    bt.innerHTML = `<strong>Proxy CMED ativo</strong> — <strong>${tot} medicamentos</strong> indexados da tabela oficial CMED/ANVISA (${dt}). A busca expande automaticamente pelo princípio ativo, retornando Éticos, Similares e Genéricos.`;
+  } else {
+    pill.className = "proxy-pill offline";
+    pill.textContent = "⚠ Proxy offline";
+    ban.className = "banner offline";
+    bt.innerHTML = `<strong>Proxy offline</strong> — exibindo base local de amostra. Para busca completa com 28.000+ medicamentos, execute <code style="background:#fef3c7;padding:1px 5px;border-radius:3px;font-size:12px">python proxy_anvisa.py</code> e recarregue.`;
+  }
+}
+
+function onInputChange() {
+  const val = this.value.trim();
+  if(val.length < 2) { closeSug(); return; }
+  clearTimeout(window._st);
+  window._st = setTimeout(async () => {
+    let matches = [];
+    if (proxyOnline) {
+      try {
+        const r = await fetch(`${PROXY}/anvisa/sugestoes?q=${encodeURIComponent(val)}`, { signal: AbortSignal.timeout(2000) });
+        if(r.ok) matches = await r.json();
+      } catch(e) {}
+    }
+    if (!matches.length) {
+      const v = val.toLowerCase();
+      matches = [...new Set(LOCAL_DB.filter(m => m.principio.toLowerCase().includes(v) || m.nome.toLowerCase().includes(v)).map(m => m.principio))].slice(0,6);
+    }
+    if (!matches.length) { closeSug(); return; }
+    const box = document.getElementById("suggestionsBox");
+    const ve = val.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+    box.innerHTML = matches.map(p => {
+      const hl = p.replace(new RegExp("("+ve+")","gi"),"<strong>$1</strong>");
+      return `<div class="suggestion-item" onclick="selSug('${p.replace(/'/g,"\\'")}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:0.4;flex-shrink:0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>${hl}</div>`;
+    }).join("");
+    box.classList.add("open");
+  }, 260);
+}
+function selSug(t) { document.getElementById("searchInput").value = t; closeSug(); doSearch(); }
+function closeSug() { document.getElementById("suggestionsBox").classList.remove("open"); }
+
+async function doSearch() {
+  const raw = document.getElementById("searchInput").value.trim();
+  if(!raw) return;
+  closeSug();
+  setLoading(true);
+  filtroAtivo = "todos";
+  document.querySelectorAll(".filter-btn").forEach(b => {
+    b.className = "filter-btn" + (b.dataset.t==="todos" ? " fa" : "");
+  });
+
+  let results = [], fonte = "local";
+  if (proxyOnline) {
+    try { results = await fetchProxy(raw); fonte = "cmed"; }
+    catch(e) { results = searchLocal(raw); }
+  } else {
+    results = searchLocal(raw);
+  }
+  allResults = results;
+  setLoading(false);
+  addHist(raw);
+  renderResults(raw, fonte);
+}
+
+async function fetchProxy(query) {
+  // Busca 1: pelo termo digitado (nome comercial)
+  const r1 = await fetch(`${PROXY}/anvisa/medicamentos?q=${encodeURIComponent(query)}&count=200`, { signal: AbortSignal.timeout(10000) });
+  if(!r1.ok) throw new Error("proxy err");
+  const d1 = await r1.json();
+  if(d1.erro) throw new Error(d1.erro);
+  let exact = d1.resultados || [];
+  if(!exact.length) throw new Error("sem resultados");
+
+  // Marca os que vieram da busca exata (nome pesquisado)
+  const qLow = query.toLowerCase();
+  exact = exact.map(m => ({ ...m, _exact: m.nome.toLowerCase().includes(qLow) }));
+
+  // Busca 2: expande pelo(s) princípio(s) ativo(s) → traz genéricos/similares
+  const principios = [...new Set(exact.map(m => m.principio.split(/[;,]/)[0].trim()).filter(Boolean))].slice(0, 3);
+  let extra = [];
+  for (const p of principios) {
+    if (p.toLowerCase() === qLow) continue;
+    try {
+      const r2 = await fetch(`${PROXY}/anvisa/medicamentos?q=${encodeURIComponent(p)}&count=200`, { signal: AbortSignal.timeout(8000) });
+      if(!r2.ok) continue;
+      const d2 = await r2.json();
+      const novos = (d2.resultados || []).filter(r => !exact.some(x => x.nome===r.nome && x.registro===r.registro));
+      extra = [...extra, ...novos];
+    } catch(e) {}
+  }
+
+  // Combina: pesquisado exato primeiro (ordenado por tipo), depois expansão
+  const ordemTipo = ["etico","similar","generico","outros"];
+  const sortTipo = (a,b) => ordemTipo.indexOf(a.tipo) - ordemTipo.indexOf(b.tipo);
+  exact.sort(sortTipo);
+  extra.sort(sortTipo);
+  return [...exact, ...extra];
+}
+
+function searchLocal(query) {
+  const terms = query.toLowerCase().replace(/[®]/g,"").split(/[\s+,]+/).filter(t=>t.length>2);
+  const hits = LOCAL_DB.filter(m => {
+    const h = (m.nome+" "+m.principio+" "+m.laboratorio).toLowerCase();
+    return terms.every(t => h.includes(t));
+  });
+  if(!hits.length) return hits;
+  const princs = [...new Set(hits.map(m => m.principio))];
+  return LOCAL_DB.filter(m => princs.some(p => m.principio.includes(p.split(" ")[0])));
+}
+
+function setFiltro(tipo, btn) {
+  filtroAtivo = tipo;
+  const cls = { todos:"fa", etico:"fe", similar:"fs", generico:"fg", outros:"fo" };
+  document.querySelectorAll(".filter-btn[data-t]").forEach(b => {
+    b.className = "filter-btn" + (b.dataset.t===tipo ? " "+cls[tipo] : "");
+  });
+  renderCards();
+}
+
+function setView(mode) {
+  viewMode = mode;
+  document.getElementById("btnExpandida").className = "filter-btn" + (mode==="expandida" ? " fv" : "");
+  document.getElementById("btnResumida").className  = "filter-btn" + (mode==="resumida"  ? " fv" : "");
+  renderCards();
+}
+
+// ── Simplifica princípio ativo ────────────────────────────────────────────────
+const PREFIXES_PRINC = [
+  "CLORIDRATO DE ","SULFATO DE ","FOSFATO DE ","BROMETO DE ","MESILATO DE ",
+  "MALEATO DE ","FUMARATO DE ","TARTARATO DE ","ACETATO DE ","NITRATO DE ",
+  "CITRATO DE ","GLUCONATO DE ","MONOFOSFATO DE ","BESILATO DE ",
+  "HIDROCLORETO DE ","OXALATO DE ","SUCCINATO DE ","ESTEARATO DE ",
+  "PALMITATO DE ","VALERATO DE ","DECANOATO DE ","DIFOSFATO DE ",
+  "TRIFOSFATO DE ","PROPIONATO DE ","BUTIRATO DE ","CAPRILATO DE ",
+];
+const SUFFIXES_PRINC = /\s+(SÓDICO|SÓDICA|POTÁSSICO|POTÁSSICA|DISSÓDICO|ANIDRO|ANIDRA|MONOIDRATADO|MONOIDRATADA|TRIIDRATADO|TRIIDRATADA|TROMETAMOL|HEMISUCCINATO|HEMISSUCCINATO|MICRONIZADO|MICRONIZADA|MONO-HIDRATADO)\s*$/i;
+
+function simplifyPrincipio(raw) {
+  if (!raw) return raw;
+  const parts = raw.split(/[;,]/).map(p => p.trim()).filter(Boolean);
+  return parts.map(part => {
+    let s = part.toUpperCase();
+    PREFIXES_PRINC.forEach(pre => { s = s.split(pre).join(""); });
+    s = s.replace(SUFFIXES_PRINC, "").trim();
+    // Title case preservando a string
+    return s.charAt(0) + s.slice(1).toLowerCase();
+  }).join(" + ");
+}
+
+function filteredResults() {
+  return filtroAtivo==="todos" ? allResults : allResults.filter(m=>m.tipo===filtroAtivo);
+}
+
+function setLoading(v) {
+  document.getElementById("searchBtn").disabled = v;
+  document.getElementById("searchBtn").innerHTML = v
+    ? `<span class="spinner"></span> Buscando…`
+    : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Buscar`;
+  if(v) {
+    document.getElementById("statusBar").innerHTML = `<span class="status-text"><span class="spinner"></span> Buscando e expandindo por princípio ativo…</span>`;
+    document.getElementById("results").innerHTML = "";
+    document.getElementById("filterRow").style.display = "none";
+  }
+}
+
+function renderWelcome() {
+  document.getElementById("results").innerHTML = `<div class="state-box">
+    <svg class="state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+    <div class="state-title">Busque por nome comercial ou princípio ativo</div>
+    <div class="state-desc">A busca expande automaticamente pelo princípio ativo<br>e retorna Éticos, Similares e Genéricos disponíveis</div>
+  </div>`;
+}
+
+function renderResults(query, fonte) {
+  const cnt = { etico:0, similar:0, generico:0, outros:0 };
+  allResults.forEach(m => { if(cnt[m.tipo]!==undefined) cnt[m.tipo]++; else cnt.outros++; });
+  const total = allResults.length;
+  const ftag = fonte==="cmed"
+    ? `<span style="font-size:12px;background:#dcfce7;color:#166534;border:1px solid #86efac;padding:2px 9px;border-radius:10px;font-weight:700;margin-left:8px">CMED/ANVISA</span>`
+    : `<span style="font-size:12px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;padding:2px 9px;border-radius:10px;font-weight:700;margin-left:8px">Base local</span>`;
+
+  if(!total) {
+    document.getElementById("statusBar").innerHTML = `<span class="status-text">Nenhum resultado para <em>"${query}"</em>${ftag}</span>`;
+    document.getElementById("filterRow").style.display = "none";
+    document.getElementById("results").innerHTML = `<div class="state-box">
+      <svg class="state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M15 9l-6 6M9 9l6 6"/></svg>
+      <div class="state-title">Nenhum medicamento encontrado</div>
+      <div class="state-desc">Tente outro nome comercial ou princípio ativo</div>
+    </div>`;
+    return;
+  }
+
+  // Conta após agrupamento
+  const grouped = groupResults(allResults);
+  const gcnt = { etico:0, similar:0, generico:0, outros:0 };
+  grouped.forEach(m => { if(gcnt[m.tipo]!==undefined) gcnt[m.tipo]++; else gcnt.outros++; });
+  const gtotal = grouped.length;
+
+  document.getElementById("statusBar").innerHTML = `
+    <span class="status-text">${gtotal} medicamento${gtotal>1?"s":""} para <em>"${query}"</em> ${total!==gtotal?`<span style="font-size:12px;color:var(--gray-light)">(${total} apresentações agrupadas)</span>`:""} ${ftag}</span>
+    <div class="status-counts">
+      ${gcnt.etico   ?`<span class="count-chip chip-e">${gcnt.etico} Ético${gcnt.etico>1?"s":""}</span>`:""}
+      ${gcnt.similar ?`<span class="count-chip chip-s">${gcnt.similar} Similar${gcnt.similar>1?"es":""}</span>`:""}
+      ${gcnt.generico?`<span class="count-chip chip-g">${gcnt.generico} Genérico${gcnt.generico>1?"s":""}</span>`:""}
+      ${gcnt.outros  ?`<span class="count-chip chip-o">${gcnt.outros} Outro${gcnt.outros>1?"s":""}</span>`:""}
+    </div>`;
+  document.getElementById("filterRow").style.display = "flex";
+  renderCards();
+}
+
+// ── Agrupa medicamentos por nome + laboratório + tipo ─────────────────────────
+function groupResults(list) {
+  const map = new Map();
+  list.forEach(m => {
+    const key = `${m.nome.trim().toUpperCase()}||${m.laboratorio.trim()}||${m.tipo}`;
+    if (!map.has(key)) {
+      map.set(key, { ...m, apresentacoes: [] });
+    }
+    const g = map.get(key);
+    // Coleta apresentações únicas
+    if (m.apresentacao && !g.apresentacoes.includes(m.apresentacao)) {
+      g.apresentacoes.push(m.apresentacao);
+    }
+    // Guarda faixa de preços (menor PF, maior PMC)
+    if (m.pf) {
+      const vPF = parseFloat(m.pf.replace("R$ ","").replace(".","").replace(",","."));
+      if (!g._pfMin || vPF < g._pfMin) { g._pfMin = vPF; g.pf = m.pf; }
+    }
+    if (m.pmc) {
+      const vPMC = parseFloat(m.pmc.replace("R$ ","").replace(".","").replace(",","."));
+      if (!g._pmcMax || vPMC > g._pmcMax) { g._pmcMax = vPMC; g.pmc = m.pmc; }
+    }
+  });
+  return [...map.values()];
+}
+
+function renderCards() {
+  const list = filteredResults();
+  const wrap = document.getElementById("results");
+  if(!list.length) {
+    wrap.innerHTML = `<div class="state-box">
+      <svg class="state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+      <div class="state-title">Nenhum resultado nesta categoria</div>
+      <div class="state-desc">Remova o filtro para ver todos</div>
+    </div>`;
+    return;
+  }
+
+  // Agrupa antes de renderizar
+  const grouped = groupResults(list);
+
+  const shInfo = {
+    etico:   { label:"Éticos — Medicamento de Referência", cls:"sh-e" },
+    similar: { label:"Similares",                          cls:"sh-s" },
+    generico:{ label:"Genéricos",                          cls:"sh-g" },
+    outros:  { label:"Outros",                             cls:"sh-o" },
+  };
+
+  if (viewMode === "resumida") {
+    let h = `<div class="results-list">`;
+    let last = null;
+    grouped.forEach(m => {
+      if(m.tipo !== last && filtroAtivo==="todos") {
+        const i = shInfo[m.tipo] || shInfo.outros;
+        h += `<div class="section-header" style="margin-top:10px"><div class="sh-line"></div><span class="sh-label ${i.cls}">${i.label}</span><div class="sh-line"></div></div>`;
+        last = m.tipo;
+      }
+      h += cardResumidoHTML(m);
+    });
+    h += `</div>`;
+    wrap.innerHTML = h;
+  } else {
+    let h = `<div class="results-grid">`;
+    let last = null;
+    grouped.forEach(m => {
+      if(m.tipo !== last && filtroAtivo==="todos") {
+        const i = shInfo[m.tipo] || shInfo.outros;
+        h += `<div class="section-header"><div class="sh-line"></div><span class="sh-label ${i.cls}">${i.label}</span><div class="sh-line"></div></div>`;
+        last = m.tipo;
+      }
+      h += cardHTML(m);
+    });
+    h += `</div>`;
+    wrap.innerHTML = h;
+  }
+}
+
+function cardResumidoHTML(m) {
+  const bc = { etico:"be", similar:"bs", generico:"bg", outros:"bo" };
+  const rc = { etico:"re", similar:"rs", generico:"rg", outros:"ro" };
+  const tl = { etico:"Ético", similar:"Similar", generico:"Genérico", outros:"Outro" };
+  const fotoQ = encodeURIComponent(`embalagem ${m.nome} medicamento`);
+  const princ = simplifyPrincipio(m.principio);
+  return `<div class="card-resumida ${rc[m.tipo]||"ro"}">
+    <span class="res-nome">${m.nome}</span>
+    <span class="res-badge"><span class="tipo-badge ${bc[m.tipo]||"bo"}">${tl[m.tipo]||"Outro"}</span></span>
+    <span class="res-princ">${princ}${m.apresentacoes && m.apresentacoes.length > 1 ? `<span style="font-size:11px;color:var(--gray-light);margin-left:6px">(${m.apresentacoes.length} apresentações)</span>` : ""}</span>
+    <span class="res-foto">
+      <a class="foto-btn" style="margin-top:0;padding:4px 10px" href="https://www.google.com/search?tbm=isch&q=${fotoQ}" target="_blank" rel="noopener">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>FOTO
+      </a>
+    </span>
+  </div>`;
+}
+
+function cardHTML(m) {
+  const cc = { etico:"te be", similar:"ts bs", generico:"tg bg", outros:"to bo" };
+  const cl = m.tipo in cc ? cc[m.tipo].split(" ") : ["to","bo"];
+  const tl = { etico:"Ético · Referência", similar:"Similar", generico:"Genérico", outros:"Outro" };
+
+  let tarjaHtml = "";
+  if(m.tarja) {
+    const t = m.tarja.toLowerCase();
+    const tc = t.includes("pret") ? "tpreta" : t.includes("verm") ? "tverm" : "tsem";
+    const tl2 = t.includes("pret") ? "Tarja Preta" : t.includes("verm") ? "Tarja Vermelha" : "Sem Tarja";
+    tarjaHtml = `<span class="tarja-badge ${tc}">${tl2}</span>`;
+  }
+
+  let precosHtml = "";
+  if(m.pf || m.pmc) {
+    precosHtml = `<hr class="card-divider"><div class="precos-row">
+      ${m.pf  ?`<div class="preco-item"><span class="preco-label">Preço Fábrica</span><span class="preco-pf">${m.pf}</span></div>`:""}
+      ${m.pmc ?`<div class="preco-item"><span class="preco-label">PMC (máx. consumidor)</span><span class="preco-pmc">${m.pmc}</span></div>`:""}
+    </div>`;
+  }
+
+  const fotoQ = encodeURIComponent(`embalagem ${m.nome} medicamento`);
+  const hospHtml = m.hospitalar ? `<span class="hosp-badge">Uso hospitalar</span>` : "";
+
+  return `<div class="med-card ${cl[0]}">
+    <div class="card-header">
+      <div class="card-header-left">
+        <div class="card-name">${m.nome}${hospHtml}</div>
+        ${m.registro && m.registro!=="—" && m.registro!=="-" ? `<div class="card-registro">Reg. ANVISA: ${m.registro}</div>` : ""}
+      </div>
+      <span class="tipo-badge ${cl[1]}">${tl[m.tipo]||"Outro"}</span>
+    </div>
+    <div class="card-body">
+      <div class="card-field">
+        <div class="field-label">Princípio ativo</div>
+        <div class="field-val field-princ">${m.principio}</div>
+      </div>
+      ${(() => {
+        const apList = m.apresentacoes && m.apresentacoes.length > 0 ? m.apresentacoes : (m.apresentacao && m.apresentacao!=="nan" && m.apresentacao!=="" ? [m.apresentacao] : []);
+        if (!apList.length) return "";
+        if (apList.length === 1) return `<div class="card-field"><div class="field-label">Apresentação</div><div class="field-val" style="font-size:13px">${apList[0]}</div></div>`;
+        return `<div class="card-field"><div class="field-label">Apresentações (${apList.length})</div><ul style="list-style:none;padding:0;margin:2px 0 0">${apList.map(a=>`<li style="font-size:12px;color:var(--gray-mid);padding:2px 0;border-bottom:1px solid var(--border);line-height:1.3">${a}</li>`).join("")}</ul></div>`;
+      })()}
+      <div class="card-field">
+        <div class="field-label">Laboratório</div>
+        <div class="field-val">${m.laboratorio||"—"}</div>
+      </div>
+      ${m.classe && m.classe!=="nan" && m.classe!=="" ? `<div class="card-field"><div class="field-label">Classe terapêutica</div><div class="field-val" style="font-size:12px;color:var(--gray-mid)">${m.classe}</div></div>` : ""}
+      <div>${tarjaHtml}</div>
+      ${precosHtml}
+      <div>
+        <a class="foto-btn" href="https://www.google.com/search?tbm=isch&q=${fotoQ}" target="_blank" rel="noopener">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+          FOTO
+        </a>
+      </div>
+    </div>
+  </div>`;
+}
+</script>
+</body>
+</html>
