@@ -199,6 +199,10 @@
   .exp-val   { font-size: 13px; color: var(--gray); font-weight: 500; line-height: 1.3; }
   .exp-val.princ { color: var(--blue-dark); font-weight: 700; }
   .exp-precos { display: flex; gap: 16px; margin-top: 4px; }
+  .apres-list { list-style: none; padding: 0; margin: 2px 0 0; display: flex; flex-direction: column; gap: 3px; }
+  .apres-item { font-size: 12px; color: var(--gray-mid); padding: 4px 8px; border-radius: 5px; background: var(--gray-pale); border-left: 3px solid var(--border-mid); line-height: 1.4; }
+  .apres-common { color: var(--gray-light); }
+  .apres-diff   { color: var(--blue-dark); font-weight: 700; background: var(--blue-pale); padding: 1px 4px; border-radius: 3px; }
   .btn-expandir {
     display: inline-flex;
     align-items: center;
@@ -715,9 +719,31 @@ function cardResumidoHTML(m) {
     ? m.apresentacoes
     : (m.apresentacao && m.apresentacao !== "nan" ? [m.apresentacao] : []);
 
-  const apHtml = apList.length
-    ? `<div class="exp-field" style="grid-column:1/-1"><span class="exp-label">Apresentaç${apList.length>1?"ões ("+apList.length+")":"ão"}</span><span class="exp-val" style="font-size:12px">${apList.join(" · ")}</span></div>`
-    : "";
+  // Gera HTML de apresentações com destaque do que muda entre elas
+  function buildApresHtml(items) {
+    if (!items.length) return "";
+    const label = items.length > 1 ? "Apresentações (" + items.length + ")" : "Apresentação";
+    if (items.length === 1) {
+      return `<div class="exp-field" style="grid-column:1/-1"><span class="exp-label">${label}</span><ul class="apres-list"><li class="apres-item">${items[0]}</li></ul></div>`;
+    }
+    // Encontra prefixo comum por tokens
+    const split = items.map(s => s.split(" "));
+    const prefixToks = [];
+    for (let i = 0; i < split[0].length; i++) {
+      const tok = split[0][i];
+      if (split.every(s => s[i] === tok)) prefixToks.push(tok);
+      else break;
+    }
+    const prefixLen = prefixToks.join(" ").length;
+    const lis = items.map(ap => {
+      if (!prefixLen) return `<li class="apres-item">${ap}</li>`;
+      const common = ap.slice(0, prefixLen);
+      const diff   = ap.slice(prefixLen).trim();
+      return `<li class="apres-item"><span class="apres-common">${common}</span>${diff ? ` <span class="apres-diff">${diff}</span>` : ""}</li>`;
+    }).join("");
+    return `<div class="exp-field" style="grid-column:1/-1"><span class="exp-label">${label}</span><ul class="apres-list">${lis}</ul></div>`;
+  }
+  const apHtml = buildApresHtml(apList);
 
   const precoHtml = (m.pf || m.pmc)
     ? `<div class="exp-field" style="grid-column:1/-1"><span class="exp-label">Preços</span><div class="exp-precos">${m.pf?`<span style="font-size:13px;font-weight:700;color:var(--gray)">PF ${m.pf}</span>`:""} ${m.pmc?`<span style="font-size:13px;font-weight:700;color:var(--green)">PMC ${m.pmc}</span>`:""}</div></div>`
